@@ -114,6 +114,8 @@ class Interpreter(object):
         whether to blacklist all symbols that are in the initial symtable
     global_funcs : bool
         whether to make def use the global symbol table
+    no_print : bool
+        disable print() output if True
 
     Notes
     -----
@@ -121,7 +123,7 @@ class Interpreter(object):
 
     def __init__(self, symtable=None, usersyms=None, writer=None,
                  err_writer=None, readonly_symbols=None, builtins_readonly=True,
-                 global_funcs=False, max_statement_length=50000, no_print=False, minimal=False):
+                 global_funcs=False, max_statement_length=50000, no_print=False):
 
         self.writer = writer or stdout
         self.err_writer = err_writer or stderr
@@ -137,7 +139,7 @@ class Interpreter(object):
 
         symtable['print'] = self._printer   # install the print() function
         symtable['errline_'] = 0            # lineno of the last error
-        self.no_print = no_print or minimal
+        self.no_print = no_print            # disable print entirely
 
         self.symtable = symtable
         self._interrupt = None
@@ -279,7 +281,6 @@ class Interpreter(object):
 
     def unimplemented(self, node):
         """Unimplemented nodes."""
-        print(node)
         self.raise_exception(node, exc=NotImplementedError,
                              msg="'%s' not supported" %
                              (node.__class__.__name__))
@@ -748,6 +749,11 @@ class Interpreter(object):
                 stderr = False  if True, output to stderr instead of stdout
                 flush = True    if True, flush output immediately
         """
+
+        # disable print() if set at entry time
+        if self.no_print:
+            return
+
         # get the output destination
         errout = kws.pop('stderr', False)
         if errout:
@@ -799,7 +805,7 @@ class Interpreter(object):
                 self.run(tnode)
         self._interrupt = None
 
-    def on_for(self, node):    # ('target', 'iter', 'body', 'orelse')
+    def on_for(self, node):    # ('target', 'iter', 'body', 'orelse', 'type_comment' )
         """For blocks."""
 
         for val in self.run(node.iter):
@@ -814,6 +820,7 @@ class Interpreter(object):
         else:
             for tnode in node.orelse:
                 self.run(tnode)
+
         self._interrupt = None
 
     def on_listcomp(self, node):    # ('elt', 'generators')
@@ -1210,7 +1217,8 @@ class Procedure(object):
                 save_symtable = self.__asteval__.symtable.copy()
                 self.__asteval__.symtable.update(symlocals)
         except Exception as ex:
-            print(ex)
+            if not self.no_print:
+                print(ex)
 
         self.__asteval__.retval = None
         self.__asteval__._calldepth += 1
@@ -1222,6 +1230,8 @@ class Procedure(object):
             # if node has test instead of value
             if isinstance(node, ast.If) or isinstance(node, ast.While):
                 val = node.test
+            elif isinstance(node, ast.For):
+                val = node.body
             else:
                 val = node.value
 
@@ -1231,11 +1241,12 @@ class Procedure(object):
             else:
                 exp = '<>'
 
-
+            # execute the call
             self.__asteval__.run(node, expr=exp, lineno=self.lineno)
 
             if len(self.__asteval__.error) > 0:
-                print(self.__asteval__.error)
+                if not self.no_print:
+                    print(self.__asteval__.error)
             if self.__asteval__.retval is not None:
                 retval = self.__asteval__.retval
                 self.__asteval__.retval = None
@@ -1265,6 +1276,9 @@ class Procedure(object):
 #
 #----------------------------------------------------------------------
 
+#
+# print the structure of an object
+#
 def dump(obj, tag=None):
     print("============================================")
     if tag != None:
@@ -1276,3 +1290,26 @@ def dump(obj, tag=None):
         for k in obj:
             print ("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")
+
+#
+# print an AST node internals
+#
+def dumpnode(obj, tag=None):
+    print("============================================")
+    if tag != None:
+        print("", tag)
+    else:
+        print("")
+    for k in obj.__dict__.keys():
+        n = obj.__dict__[k]
+        print(k, n, type(n))
+        if isinstance(n, list):
+            for e in n:
+                print('    ', e, e.__dict__)
+        if isinstance(n, ast.Name):
+            print('    ', n, n.__dict__)
+        if isinstance(n, ast.List):
+            print('    ', n, n.__dict__)
+    ast.dump(obj)
+    print("=============================================")
+

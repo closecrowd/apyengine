@@ -20,7 +20,6 @@ from os.path import exists
 
 import gc
 
-#import asteval
 from .asteval import Interpreter
 from .astutils import valid_symbol_name
 
@@ -92,9 +91,6 @@ class ApyEngine():
         self.__abort = False
         self.__lastScript = ''    # name of the most-recent script
 
-#        print(self.__basepath, type(self.__basepath))
-#        print(sys.platform)
-
         # register these methods as script-callable funcs
         self.regcmd("setSysFlags_", self.setSysFlags_)
         self.regcmd("getSysFlags_", self.getSysFlags_)
@@ -110,11 +106,7 @@ class ApyEngine():
         self.regcmd("setvar_", self.setvar_)
         self.regcmd("exit_", self.exit_)
 
-#        self.dumpst('Initial')
-#        print "eng ready"
-
     def dumpst(self, tag=None):
-#        print tag
         dump(self.__ast.symtable, tag)
 
     def dumpus(self):
@@ -129,6 +121,7 @@ class ApyEngine():
 # engine API
 #
 
+    # not currently implemented
     def setSysFlags_(self, flagname,  state):
         if not self.__ast:
             return False
@@ -136,16 +129,13 @@ class ApyEngine():
         if state not in { True,  False }:
             return False;
 
-#        if flagname == 'globals':
-#            return self.__ast.setGlobalFlag(state)
         return False
 
+    # not currently implemented
     def getSysFlags_(self, flagname):
         if not self.__ast:
             return False
 
-#        if flagname == 'globals':
-#            return self.__ast.getGlobalFlag()
         return False
 
     # stop the script ASAP
@@ -157,7 +147,7 @@ class ApyEngine():
             except Exception as e:
                 print("abort error:"+str(e))
 
-    # add a new built-in
+    # add a new command
     def regcmd(self, name, func=None):
         """ register a new command for the scripts to use """
         if not name or len(name) < 1:
@@ -167,16 +157,14 @@ class ApyEngine():
             # and has a function body
             if func != None:
                 # add or replace in the table
-#                self.__ast.symtable[name] = func
-#                print(dir(self.__ast))
                 self.__ast.addSymbol(name, func)
                 # and add the name to the RO table if it isn't already
                 if name not in self.__ast.readonly_symbols:
                     self.__ast.readonly_symbols.add(name)
-#                print('added command:', name)
                 return True
         return False
 
+    # remove a registered command
     def unregcmd(self, name):
         """ unregister a command """
         if not name:
@@ -184,8 +172,6 @@ class ApyEngine():
         # if it's a valid name
         if asteval.valid_symbol_name(name):
             self.__ast.delSymbol(name)
-#            if name in self.__ast.symtable:
-#                del self.__ast.symtable[name]
             if name in self.__ast.readonly_symbols:   # set
                 self.__ast.readonly_symbols.remove(name)
             return True
@@ -194,27 +180,20 @@ class ApyEngine():
     # add new built-in commands after init
     def addcmds(self, cmddict, value=None):
         """ register a whole dict of new commands for the scripts to use """
-#        print("addcmds:", cmddict)
-#        print type(cmddict
         if cmddict != None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
                     self.regcmd(k, v)
-#                    print("new command: ",k,v)
             if type(cmddict) is str:
                 if value != None:
                      self.regcmd(cmddict,  value)
-#                     print "new string:", cmddict, value
 
     def delcmds(self, cmddict, value=None):
         """ register a whole dict of new commands for the scripts to use """
-#        print("delcmds:", cmddict)
-#        print type(cmddict
         if cmddict != None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
                     self.unregcmd(k)
-#                    print("new command: ",k,v)
             if type(cmddict) is str:
                 if value != None:
                      self.unregcmd(cmddict)
@@ -257,9 +236,7 @@ class ApyEngine():
         """ remove a specified proc from the engine (and the persist list if needed) """
         if pname in self.__ast.symtable:
             if type(self.__ast.symtable[pname]) == asteval.asteval.Procedure:
-#                self.__ast.symtable[pname] = None
                 # and take it out of the symbol table
-#                del self.__ast.symtable[pname]
                 self.__ast.delSymbol(pname)
                 # is this a persistent one?
                 if pname in self.__persistprocs:
@@ -276,7 +253,6 @@ class ApyEngine():
     def clearProcs(self, exception_list=None):
         """ remove all currently-defined def functions
             *except* those on the exception_list """
-#        print "clearProcs"
         klist = []
 
         for k in self.__ast.symtable:
@@ -294,18 +270,12 @@ class ApyEngine():
             if exception_list != None:
                 # and this proc is on it
                 if k in exception_list:
-#                    print "saving:", k
                     # don't remove
                     continue
-#            print " removing ", k, self.__ast.symtable[k]
-            # remove the proc body
-#            self.__ast.symtable[k] = None
             # and take it out of the symbol table
-#            del self.__ast.symtable[k]
             self.__ast.delSymbol(k)
         # clean up the heap
         gc.collect()
-#        self.dumpst('clearProcs')
 
 #
 # Script-callable functions
@@ -319,13 +289,9 @@ class ApyEngine():
 
         rv = None
         try:
-#            print("eval:", cmd)
             rv = self.__ast.eval(cmd)
-#            self.dumpst('after eval eng.eval')
-#            print "rv=", rv
         except Exception as e:
             print("eval error:"+str(e))
-#            return self.reporterr("Error in command: "+cmd+": "+str(e))
             return self.reporterr("Error in command: "+str(e))
         return rv
 
@@ -345,9 +311,11 @@ class ApyEngine():
         if not name:
             return False
         try:
+            # don't allow replacing the entire table
             if name == '_sysvars_':
                 return False
             self.__systemVars[name] = val
+            # save a list of the symbols in a script-accessible variable
             self.__systemVars['_sysvars_'] = list(self.__systemVars.keys())
             return True
         except:
@@ -375,17 +343,11 @@ class ApyEngine():
     # load and execute a script file
     def loadScript_(self, filename, persist=False):
         """ load and execute a script file """
-#         print("astengine_loadscript_:", filename, filepath)
         if not filename:
             return self.reporterr("Error loading script - Missing filename")
 
         # verify the file name
-
         # no quoting (*nix systems only)
-#        if not self.__windows:
-#            if '\\' in filename:
-#                filename = filename.replace('\\', '')
-
         # clean up the submitted fiename
         sfilename = sanitizePath(filename)
         if len(sfilename) < 1:
@@ -401,14 +363,11 @@ class ApyEngine():
         if not fn:
             return self.reporterr("Error - unknown script '"+filename+'"')
 
-        #print(fn)
         try:
-
             # add the extension if needed
             if fn[-4:] != DEFAULT_EXT:
                 fn += DEFAULT_EXT
 
-#            lcode = None
             # load the script
             infile = open(fn ,'r')
             # read a line - TODO: add a check for early exit here (maybe)
@@ -421,37 +380,26 @@ class ApyEngine():
             self.__lastScript = filename
             self.setSysVar_('currentScript', filename)
 
+            # and run the code
             self.__ast.run(ccode)
-#            print('run done')
             if persist:
                 newprocs = self.getProcs_()
                 if len(newprocs) > 0:
-#                    print newprocs
                     for k in newprocs:
                         self.__persistprocs.append(k)
- #                   print self.__persistprocs
 
         except Exception as e:
-#            print("load error:"+str(e))
-#            print("load error in:",filename)
-
-#            if self.__abort:
-#                return self.reporterr("Aborted script execution: '"+filename)
             es = ""
             for e in self.__ast.error:
-                #print(e, e.msg)
                 t =  e.get_error()
-#                print t
                 if t != None:
                     es = str(t[0]) + ": " + str(e.msg)
                 else:
                     es = e.msg
- #               es = t[0]
                 break
 
             return self.reporterr("Error loading script '"+filename+"': "+es)
 
-#        print("astengine_loadscript_ done:", filename)
         return None
 
     # is a script symbol defined?
@@ -470,7 +418,6 @@ class ApyEngine():
         if key in self.__ast.symtable:
             return True
         return False
-
 
     # returns a list of currently-defined def functions
     def listDefs_(self, exception_list=None):
@@ -505,7 +452,6 @@ class ApyEngine():
 
         return ret
 
-
     # set a script variable from the outside
     # pass None as val to delete
     def setvar_(self, vname, val):
@@ -529,6 +475,7 @@ class ApyEngine():
                 return True
         return False
 
+    # exit the engine
     def exit_(self, ret):
         sys.exit(ret)
 
@@ -572,9 +519,6 @@ def sanitizePath(path):
 
 def dump(obj, tag=None):
     print("============================================")
-#    print str(obj),type(obj),"\n"
-#    for attr in dir(obj):
-#        print("obj.%s = %r" % (attr, getattr(obj, attr)))
     if tag != None:
         print("", tag)
     else:
@@ -582,7 +526,6 @@ def dump(obj, tag=None):
     if type(obj) is DictType:
         print(getattr(obj, 'items'))
         for k in obj:
-#            print "  {} : {}  {}".format(k, obj[k], type(obj[k]))
             if type(obj[k]) == asteval.asteval.Procedure:
                 print("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")

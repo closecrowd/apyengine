@@ -9,7 +9,8 @@
     last update: 2023-Nov-13
     License:  MIT
     Author:  Mark Anacker <closecrowd@pm.me>
---------------------------------------------------------------------
+    Copyright (c) 2023 by Mark Anacker
+-----------------------------------------------------------------
 """
 
 import sys

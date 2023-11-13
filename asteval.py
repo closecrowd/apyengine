@@ -1,3 +1,4 @@
+
   #!/usr/bin/env python3
 """Safe(ish) evaluation of mathematical expression using Python's ast
 module.
@@ -47,6 +48,7 @@ functions that are considered unsafe are missing ('eval', 'exec', and
    Author:  Matthew Newville <newville@cars.uchicago.edu>
             Center for Advanced Radiation Sources,
             The University of Chicago
+--------------------------------------------------------------------
 """
 
 from __future__ import division, print_function
@@ -114,6 +116,8 @@ class Interpreter(object):
         whether to blacklist all symbols that are in the initial symtable
     global_funcs : bool
         whether to make def use the global symbol table
+    max_statement_length : int
+        Maximum length of a script statement
     no_print : bool
         disable print() output if True
 
@@ -201,9 +205,14 @@ class Interpreter(object):
         """set node handler"""
         self.node_handlers[node] = handler
 
-    # module install
+    # import a pre-allowed Python module
+    # see MODULE_LIST in astutils.py for the current list
+    # of installable modules.  This is NOT the
+    # extension loader.
     def install(self, modname):
-        """ install a pre-defined Python module """
+        """install a pre-authorized Python module.  This is
+        called by the install_() handler in apyengine.py
+        """
 
         global symlock
 
@@ -286,8 +295,10 @@ class Interpreter(object):
                              (node.__class__.__name__))
 
     def raise_exception(self, node, exc=None, msg='', expr=None,
-                        lineno=None):
+                        lineno=0):
         global symlock
+
+#        print('raise_exception:', node, exc, msg, expr, lineno)
 
         ml = len(msg)
 
@@ -299,31 +310,41 @@ class Interpreter(object):
         if len(self.error) > 0 and not isinstance(node, ast.Module):
             msg = '%s' % msg
 
-        if not node:
-            lineno = 0
-        else:
+#        if not node:
+#            lineno = 0
+#        else:
+        if node:
             if not isinstance(node, ast.Module):
                 lineno = int(node.lineno)
 
         err = ExceptionHolder(node, exc=exc, msg=msg, expr=expr, lineno=lineno)
-        self._interrupt = ast.Break()
+#        self._interrupt = ast.Break()
+        self._interrupt = ast.Raise()
         self.error.append(err)
 
-        if self.error_msg is None:
-            self.error_msg = (' '.join([msg, "at expr='%s'" % (self.expr)]))
-        elif len(msg) > 0:
+        #if self.error_msg is None:
+        #    self.error_msg = (' '.join([msg, "at expr='%s'" % (self.expr)]))
+        if len(msg) > 0:
             self.error_msg = msg
 
-        if lineno != None and ml > 0:
+#        print('raise_exception:', self.error_msg, lineno, ml)
+
+        if lineno != 0 and ml > 0:
             self.error_msg = self.error_msg + ' at line '+str(lineno)
+
             with symlock:
                 self.symtable['errline_'] = int(lineno)
+
+#        print('raise_exception:', self.error_msg)
 
         if exc is None:
             try:
                 exc = self.error[0].exc
             except:
                 exc = RuntimeError
+
+        self.error[0].msg = self.error_msg
+#        print('exc:', exc, self.error_msg)
         raise exc(self.error_msg)
 
     # main entry point for Ast node evaluation
@@ -350,6 +371,8 @@ class Interpreter(object):
         """Execute parsed Ast representation for an expression."""
         # Note: keep the 'node is None' test: internal code here may run
         #    run(None) and expect a None in return.
+
+#        print('run:', node, expr, lineno, with_raise)
 
         if self.abort:
             self.raise_exception(node, expr=None, msg='execution aborted')
@@ -378,6 +401,8 @@ class Interpreter(object):
         except KeyError:
             return self.unimplemented(node)
 
+#        print('handler:', handler)
+
         # run the handler:  this will likely generate
         # recursive calls into this run method.
         try:
@@ -387,9 +412,11 @@ class Interpreter(object):
                 ret = handler(node)
             if isinstance(ret, enumerate):
                 ret = list(ret)
+#            print('ret:', ret)
             return ret
         except:
             if with_raise:
+#                print('with raise:', node, expr)
                 self.raise_exception(node, expr=expr)
 
     def __call__(self, expr, **kw):
@@ -901,10 +928,11 @@ class Interpreter(object):
         """Exception handler..."""
         return (self.run(node.type), node.name, node.body)
 
+    # if at first you don't succeed... that's what we have except: blocks for...
     def on_try(self, node):    # ('body', 'handlers', 'orelse', 'finalbody')
         """Try/except/else/finally blocks."""
+
         no_errors = True
-        self.error = []
         for tnode in node.body:
             # run the body of the try:
             self.run(tnode, with_raise=False)
@@ -912,16 +940,18 @@ class Interpreter(object):
             # uh oh, there was an exception
             if len(self.error) > 0:
                 e_type, e_value, e_tback = self.error[-1].exc_info
+                if e_type == None:
+                    e_value = self.error_msg
+
                 for hnd in node.handlers:
                     htype = None
                     if hnd.type is not None:
                         htype = builtins.get(hnd.type.id, None)
-                    if htype is None or isinstance(e_type(), htype):
+                    if htype is None or e_type is None or isinstance(e_type(), htype):
                         self.error = []
                         if hnd.name is not None:
                             # put the error string in the 'Exception as' variable
                             self.node_assign(hnd.name, e_value)
-
                         # run the except: body
                         for tline in hnd.body:
                             self.run(tline)
@@ -941,12 +971,17 @@ class Interpreter(object):
 
         excnode = node.exc
         msgnode = node.cause
+        lineno = node.lineno
+
         out = self.run(excnode)
         msg = ' '.join(out.args)
-        msg2 = self.run(msgnode)
-        if msg2 not in (None, 'None'):
-            msg = "%s: %s" % (msg, msg2)
-        self.raise_exception(None, exc=out.__class__, msg=msg, expr='')
+
+        if msgnode != 'None':
+            msg2 = self.run(msgnode)
+            if msg2 not in (None, 'None'):
+                msg = "%s: %s" % (msg, msg2)
+
+        self.raise_exception(None, exc=out.__class__, msg=msg, expr='', lineno=lineno)
 
     def on_call(self, node):
         """Function execution."""

@@ -7,8 +7,8 @@
         The University of Chicago
 
     version: 1.0
-    last update: 2023-Nov-02
-    License:  LGPL
+    last update: 2023-Nov-13
+    License:  MIT
     Author:  Mark Anacker <closecrowd@pm.me>
 
     Copyright (c) 2023 by Mark Anacker.   All Rights Reserved
@@ -316,16 +316,19 @@ ReturnedNone = Empty()
 
 
 class ExceptionHolder(object):
-    """Basic exception handler."""
+    """This class carries the info needed to properly route and
+    handle exceptions.  It's generally called from on_raise() in
+    asteval.py"""
 
-    def __init__(self, node, exc=None, msg='', expr=None, lineno=None):
-        """TODO: docstring in public method."""
+    def __init__(self, node, exc=None, msg='', expr=None, lineno=0):
+        """Create a new Exception report object"""
         self.node = node
         self.expr = expr
         self.msg = msg
         self.exc = exc
         self.lineno = lineno
         self.exc_info = exc_info()
+
         if self.exc is None and self.exc_info[0] is not None:
             self.exc = self.exc_info[0]
         if self.msg == '' and self.exc_info[1] is not None:
@@ -349,8 +352,6 @@ class ExceptionHolder(object):
         out = ["   %s" % self.expr]
         if col_offset > 0:
             out.append("    %s^^^" % ((col_offset)*' '))
-
-#        print ("@@@",exc_name,col_offset)
 
         out.append(str(self.msg))
         return (exc_name, '\n'.join(out))

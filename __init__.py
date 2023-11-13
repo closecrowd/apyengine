@@ -5,8 +5,8 @@
     This package incorporates "asteval" from https://github.com/newville/asteval
 
     version: 1.0
-    last update: 2023-Nov-02
-    License:  LGPL
+    last update: 2023-Nov-13
+    License:  MIT
     Author:  Mark Anacker <closecrowd@pm.me>
 
     Copyright (c) 2023 by Mark Anacker.   All Rights Reserved

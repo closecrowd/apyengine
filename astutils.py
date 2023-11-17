@@ -295,6 +295,10 @@ def op2func(op):
 class Empty:
     """Empty class.
 
+    This class is used as a return value in the __call__() and
+    on_return() methods in asteval.Interpreter.  If differentiates
+    between an empty return and one with an expression.
+
     """
 
     def __init__(self):
@@ -305,7 +309,7 @@ class Empty:
         """TODO: docstring in magic method."""
         return False
 
-
+# Set the global value to the return sentinel
 ReturnedNone = Empty()
 
 
@@ -404,7 +408,7 @@ def get_ast_names(astnode):
 
 def make_symbol_table(modlist, **kwargs):
 
-    """Create a default symboltable
+    """Create a default symbol table
 
     This function creates the default symbol table, and installs some pre-defined
     symbols.

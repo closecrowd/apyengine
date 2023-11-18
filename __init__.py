@@ -1,9 +1,15 @@
-""" ApyEngine - An environment for running Python-subset scripts.
+"""ApyEngine - An interpreter for running Python-subset scripts.
+
+This package contains an interpreter for a safe subset of the
+Python3 language.  It does NOT run stand-alone, but must be
+imported into a host application.
+
+The companion project "apyshell" demonstrates how to fully use and control
+this engine. <https://github.com/closecrowd/apyshell>
 
 Credits:
-
     * version: 1.0
-    * last update: 2023-Nov-13
+    * last update: 2023-Nov-17
     * License:  MIT
     * Author:  Mark Anacker <closecrowd@pm.me>
     * Copyright (c) 2023 by Mark Anacker

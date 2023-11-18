@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ApyEngine - An environment for running Python-subset scripts.
+"""apyengine - An environment for running Python-subset scripts.
 
 This module implements an interpreter for a Python3 subset, along with support
 functions.  It may be embedded in a Python3 host program to provide versatile
@@ -18,7 +18,6 @@ The companion project "apyshell" demonstrates how to fully use and control
 this engine. <https://github.com/closecrowd/apyshell>
 
 Credits:
-
     * version: 1.0
     * last update: 2023-Nov-13
     * License:  MIT

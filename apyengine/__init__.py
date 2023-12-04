@@ -4,8 +4,8 @@ This package contains an interpreter for a safe subset of the
 Python3 language.  It does NOT run stand-alone, but must be
 imported into a host application.
 
-The companion project "apyshell" demonstrates how to fully use and control
-this engine.
+The companion project "apyshell" demonstrates how to fully use and
+control this engine.
 <https://github.com/closecrowd/apyshell>
 
 Credits:
@@ -15,7 +15,8 @@ Credits:
     * Author:  Mark Anacker <closecrowd@pm.me>
     * Copyright (c) 2023 by Mark Anacker
 Note:
-    * This package incorporates "asteval" from https://github.com/newville/asteval
+    * This package incorporates "asteval" from
+        https://github.com/newville/asteval
 
 """
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""apyexample2.py
+"""apyexample1.py
 
 A simple example showing how to create and use the apyengine interpreter
 directly.

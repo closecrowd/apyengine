@@ -40,7 +40,15 @@ The project ran it's source, and the app was retired.  I took the basic concepts
 
 ### Installation
 
-The setup.py installer isn't fully tested yet.  So for right now, grab the .py files from this repo, and put them in an "apyengine" directory under your main application.
+Grab the "apyengine" project from GitHub, and change to the top-level directory (where this README is located).  Then just:
+
+```sudo pip install .```
+
+and it will be installed in your global Python site library.  If you want to work with the sources while using it, you can also do:
+
+```sudo pip install -e .```
+
+for an in-place, editable install.
 
 ### Running
 

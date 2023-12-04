@@ -20,11 +20,11 @@ Note:
 
 """
 
-from .apyengine import ApyEngine
-from .asteval import Interpreter
-from .astutils import (NameFinder, valid_symbol_name,
+from apyengine.apyengine import ApyEngine
+from apyengine.asteval import Interpreter
+from apyengine.astutils import (NameFinder, valid_symbol_name,
                        make_symbol_table, get_ast_names)
-from ._version import get_versions
+from apyengine._version import get_versions
 
 __all__ = ['ApyEngine', 'Interpreter', 'NameFinder', 'valid_symbol_name',
            'make_symbol_table', 'get_ast_names']

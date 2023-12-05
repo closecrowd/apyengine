@@ -40,7 +40,7 @@ The project ran it's source, and the app was retired.  I took the basic concepts
 
 ### Installation
 
-Grab the "apyengine" project from GitHub, and change to the top-level directory (where this README is located).  Then just:
+Grab the "[apyengine](https://github.com/closecrowd/apyengine/)" project from GitHub, and change to the top-level directory (where this README is located).  Then just:
 
 ```sudo pip install .```
 
@@ -71,6 +71,13 @@ This runs a script named "myscriptname.apy" in the current directory.    You can
 engine.setSysVar_('hostname',  platform.node())
 ```
 
+You can also directly feed it Python expressions, and get the results:
+
+```python
+ret = engine.eval_("1 + 1")
+print(ret)
+```
+
 See the documentation for the full list of API commands.
 
 ### Examples
@@ -99,7 +106,7 @@ print(p)
 
 Here's another one (included in this package as 'examples/apyexample1.py'):
 
-```
+```python
 #!/usr/bin/env python3
 """apyexample1.py
 
@@ -146,7 +153,7 @@ print(ret,"should be enough for anyone...")
 
 And the last one, which is a simple REPL:
 
-```
+```python
 #!/usr/bin/env python3
 """apyexample2.py
 

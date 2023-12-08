@@ -173,7 +173,8 @@ FROM_BASE64 = ('b64encode', 'b64decode', 'urlsafe_b64encode', 'urlsafe_b64decode
 # Python JSON module
 # these symbols will have _ appended
 FROM_JSON = ('dumps', 'loads', 'JSONDecoder', 'JSONEncoder')
-
+# rename theses a bit to dodge a conflict with numpy
+JSON_RENAMES = { 'dumps':'jsondumps', 'loads':'jsonloads' }
 
 # python modules that may be installed by scripts with the install_() function
 # and their symbols (defined above)
@@ -492,8 +493,13 @@ def install_python_module(symtable, modname, modlist, rename=True):
             if k in md:
                 # if this module is flagged for rename:
                 if rename:
-                    # by default, add the _
-                    sym = k+'_'
+                    # json has some special names
+                    if modname == 'json':
+                        if k in JSON_RENAMES:
+                            sym = JSON_RENAMES[k]+'_'
+                    else:
+                        # by default, add the _
+                        sym = k+'_'
                 else:
                     sym = k
                 # add to the temp table

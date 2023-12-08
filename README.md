@@ -3,7 +3,9 @@
 
 ApyEngine is an interpreter for a Python-subset language, written in Python3.  It's easily embedded in a Python application, and provides a means to add safe scripting.  It great for education - teaching programming concepts in a secure environment.  Or giving the users of your application the ability to write their own scripts, without introducing security issues.
 
-At it's heart is a fork and extension of <b>asteval</b>  by Matt Newville  [GitHub](https://github.com/newville/asteval), with many, many new features and abilities.  
+At it's heart is a fork and extension of [asteval](https://github.com/newville/asteval)  by Matt Newville, with many, many new features and abilities.  
+
+For an example of fully utilizing the engine, see the companion project [apyshell](https://github.com/closecrowd/apyshell).
         
 Some of the major features:
 
@@ -17,11 +19,11 @@ There are some major differences from standard Python.  Scripts can not import P
 
 Python elements that are **not** allowed include:
 
-import, eval, exec, getattr, lambda, class, global, yield, Generators,  Decorators
+**import, eval, exec, getattr, lambda, class, global, yield, Generators,  Decorators**
 
-among others.
+and a few others.
          
-The documentation in the GitHub project has more details [here](https://github.com/closecrowd/apyengine)
+The documentation in the docs/ diectory has more details about the language and engine APIs.
 
 It currently runs on Linux, and tested with Python 3.5 to 3.9.  Ports to Android, Windows, and MacOS are underway.
 

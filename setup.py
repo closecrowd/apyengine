@@ -11,7 +11,4 @@ setup(
     url='https://github.com/closecrowd/apyengine/',
     license='MIT',
     packages=find_packages(include=['apyengine', 'apyengine.*']),
-    install_requires=[
-        'importlib'
-    ]
 )

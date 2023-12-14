@@ -496,15 +496,21 @@ def install_python_module(symtable, modname, modlist, rename=True):
                     # json has some special names
                     if modname == 'json':
                         if k in JSON_RENAMES:
+                            # JSON renamed symbols
                             sym = JSON_RENAMES[k]+'_'
+                        else:
+                            # JSON not renamed
+                            sym = k+'_'
                     else:
                         # by default, add the _
                         sym = k+'_'
                 else:
+                    # symbol not modified
                     sym = k
                 # add to the temp table
                 lst[sym] = modd[k]
 
+        # and add the new symbols to the passed-in table
         symtable.update(lst)
 
         # add the module name to the list (except 'python')

@@ -3,7 +3,7 @@
 
 Credits:
     * version: 1.0.0
-    * last update: 2023-Nov-13
+    * last update: 2023-Dec-203
     * License:  MIT
     * Author:  Mark Anacker <closecrowd@pm.me>
     * Copyright (c) 2023 by Mark Anacker
@@ -176,10 +176,17 @@ FROM_JSON = ('dumps', 'loads', 'JSONDecoder', 'JSONEncoder')
 # rename theses a bit to dodge a conflict with numpy
 JSON_RENAMES = { 'dumps':'jsondumps', 'loads':'jsonloads' }
 
+# Python re module
+FROM_RE = {'compile', 'search', 'match', 'fullmatch', 'split', 'findall',
+            'finditer', 'sub', 'subn', 'escape', 'purge', 'error', 'ASCII', 'IGNORECASE',
+           'LOCALE', 'MULTILINE', 'NOFLAG', 'DOTALL', 'UNICODE', 'VERBOSE', 'DEBUG' }
+
 # python modules that may be installed by scripts with the install_() function
 # and their symbols (defined above)
 # The 'python' module is automatically installed
-MODULE_LIST = {'python':FROM_PY, 'math':FROM_MATH, 'time':FROM_TIME, 'numpy':FROM_NUMPY, 'base64':FROM_BASE64, 'json':FROM_JSON}
+MODULE_LIST = {'python':FROM_PY, 'math':FROM_MATH, 'time':FROM_TIME,
+                'numpy':FROM_NUMPY, 'base64':FROM_BASE64, 'json':FROM_JSON,
+                're':FROM_RE}
 
 ##############################################################################
 
@@ -268,12 +275,12 @@ def valid_symbol_name(name):
     the regular expression ``[a-zA-Z_][a-zA-Z0-9_]``
 
         Args:
-          name  : str
-             name to check for validity.
+
+          name  :   name to check for validity.
 
         Returns:
-          valid :  bool
-            whether name is a a valid symbol name
+
+          valid :   True if a name is a valid symbol name
 
     """
 
@@ -315,6 +322,7 @@ class ExceptionHolder(object):
     This class carries the info needed to properly route and
     handle exceptions.  It's generally called from on_raise() in
     asteval.py
+
     """
 
     def __init__(self, node, exc=None, msg='', expr=None, lineno=0):
@@ -323,6 +331,7 @@ class ExceptionHolder(object):
         Holds some exception metadata.
 
             Args:
+
                 node    :   Node that had an exception
                 exc     :   The exception
                 msg     :   Error message
@@ -410,10 +419,12 @@ def make_symbol_table(modlist, **kwargs):
     symbols.
 
         Args:
+
             modlist : list names of currently-installed modules
             **kwargs :  optional additional symbol name, value pairs to include in symbol table
 
         Returns:
+
             symbol_table : dict a symbol table that can be used in `asteval.Interpereter`
 
     """
@@ -448,11 +459,14 @@ def install_python_module(symtable, modname, modlist, rename=True):
     This is called by the install() function in asteval.py
 
         Args:
+
             symtable    :   The symbol table to install into.
             modname     :   The module name to install.
             modlist     :   A list of currently-installed modules.
             rename      :   If True, add an '_' to each function name.
+
         Returns:
+
             The return value. True for success, False otherwise.
 
     """
@@ -463,11 +477,8 @@ def install_python_module(symtable, modname, modlist, rename=True):
 
     # check the list of installed modules and make sure this one
     # isn't already installed
-    try:
-        modlist.index(modname)
+    if modname in modlist:
         return False
-    except:
-        pass
 
     # make a temp symbol table
     lst = {}
@@ -485,7 +496,6 @@ def install_python_module(symtable, modname, modlist, rename=True):
         else:
             # we don't have to import the builtins
             modd = builtins
-
         # walk the symbols in the new module, adding only the safe
         # symbols to the script table
         for k in modd:
@@ -501,6 +511,9 @@ def install_python_module(symtable, modname, modlist, rename=True):
                         else:
                             # JSON not renamed
                             sym = k+'_'
+                    # re gets ALL syms renamed
+                    elif modname == 're':
+                        sym = 're'+k+'_'
                     else:
                         # by default, add the _
                         sym = k+'_'

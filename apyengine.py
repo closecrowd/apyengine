@@ -850,8 +850,8 @@ class ApyEngine():
 
         """
 
-        if not vname:
-            return default
+        if not vname or len(vname) < 1:
+            return False
 
         ret = self.__ast.getSymbol(vname)
         if not ret:
@@ -864,13 +864,17 @@ class ApyEngine():
     def setvar_(self, vname, val):
         """Set a variable from the host application.
 
-        This method creates or modifies the vlalue of a variable in
+        This method creates or modifies the value of a variable in
         the script symbol table.  Scripts can then simply reference the
         variable like any other.
 
         Passing None as the val parameter will remove the variable from
         the symbol table. This might upset some script that depends on that
         variable being defined - use with caution.
+
+        Only user-created vars may be set - that is, those whose names do
+        NOT end with "_".  You can use getvar_() to read system-created vars,
+        but not set them with setvar_().
 
         This can also be called by scripts with the "setvar_()" function.
         Again, it allows for indirect variable referencing, which is
@@ -890,15 +894,16 @@ class ApyEngine():
 
         if not vname or len(vname) < 1:
             return False
+
         # if it's a valid name
-        if asteval.valid_symbol_name(vname):
+        if valid_symbol_name(vname) and not vname.endswith('_'):
             # don't change read-only vars
             if self.__ast.isReadOnly(vname):
                 return False
             # if we pass something
             if val != None:
                 # add it to the table
-                self.__ast.addSymbol(vname,  val)
+                self.__ast.addSymbol(vname, val)
                 return True
             else:
                 # otherwise, del any existing copy

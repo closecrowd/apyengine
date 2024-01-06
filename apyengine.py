@@ -127,7 +127,7 @@ class ApyEngine():
             self.__windows = False
 
         # if no base path for the scripts was given, use the current directory
-        if basepath == None or len(basepath) == 0:
+        if basepath is None or len(basepath) == 0:
             if self.__windows:
                 self.__basepath = []
             else:
@@ -197,7 +197,7 @@ class ApyEngine():
             return False
 
         if state not in { True,  False }:
-            return False;
+            return False
 
         return False
 
@@ -207,7 +207,7 @@ class ApyEngine():
             return False
 
         if state not in { True,  False }:
-            return False;
+            return False
 
         return False
 
@@ -242,7 +242,7 @@ class ApyEngine():
                 return False
 
             # if val == None, delete the entry
-            if val == None:
+            if val is None:
                 # if it's in the table
                 if name in self.__systemVars:
                     del self.__systemVars[name]
@@ -307,7 +307,7 @@ class ApyEngine():
         # if it's a valid name
         if valid_symbol_name(name):
             # and has a function body
-            if func != None:
+            if func is not None:
                 # add or replace in the table
                 self.__ast.addSymbol(name, func)
                 # and add the name to the RO table if it isn't already
@@ -369,7 +369,7 @@ class ApyEngine():
 
         """
 
-        if cmddict != None:
+        if cmddict is not None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
                     self.regcmd(k, v)
@@ -398,10 +398,10 @@ class ApyEngine():
 
         """
 
-        if cmddict != None:
+        if cmddict is not None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
-                # note: we don't check the return of each item
+                    # note: we don't check the return of each item
                     self.unregcmd(k)
                 return True
         return False
@@ -432,7 +432,7 @@ class ApyEngine():
         """
 
         # setting persist state
-        if flag == True:
+        if flag is True:
             # already in there?
             if pname in self.__persistprocs:
                 return True
@@ -517,7 +517,7 @@ class ApyEngine():
         # walk the list of procs
         for k in klist:
             # if we have an exception list
-            if exception_list != None:
+            if exception_list is not None:
                 # and this proc is on it
                 if k in exception_list:
                     # don't remove
@@ -702,7 +702,7 @@ class ApyEngine():
                 fn += DEFAULT_EXT
 
             # load the script
-            infile = open(fn ,'r')
+            infile = open(fn, 'r')
             # read a line - TODO: add a check for early exit here (maybe)
             scode = infile.read()
             infile.close()
@@ -727,8 +727,8 @@ class ApyEngine():
         except Exception as e:
             es = ""
             for e in self.__ast.error:
-                t =  e.get_error()
-                if t != None:
+                t = e.get_error()
+                if t is not None:
                     es = str(t[0]) + ": " + str(e.msg)
                 else:
                     es = e.msg
@@ -901,7 +901,7 @@ class ApyEngine():
             if self.__ast.isReadOnly(vname):
                 return False
             # if we pass something
-            if val != None:
+            if val is not None:
                 # add it to the table
                 self.__ast.addSymbol(vname, val)
                 return True
@@ -947,11 +947,11 @@ class ApyEngine():
 
         sys.exit(int(ret))
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 #
 # Support functions
 #
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 #
 # return True if the string contains only a-zA-Z0-9-_
@@ -1044,7 +1044,7 @@ def sanitizePath(path):
 
 def dump(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
@@ -1054,4 +1054,3 @@ def dump(obj, tag=None):
             if type(obj[k]) == asteval.asteval.Procedure:
                 print("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")
-

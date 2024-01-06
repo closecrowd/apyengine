@@ -146,7 +146,7 @@ class Interpreter(object):
 
         self.modlist = []       # list of installed modules
 
-        ## symtable
+        # symtable
         if symtable is None:
             if usersyms is None:
                 usersyms = {}
@@ -199,6 +199,7 @@ class Interpreter(object):
 
     # stop a running script as soon as possible
     def abortrun(self):
+
         """Terminate execution of a script.
 
         Sets a flag that causes the currently-running script to exit
@@ -295,6 +296,7 @@ class Interpreter(object):
         return unique_symbols
 
     def isReadOnly(self, varname):
+
         """See if a script variable name is marked read-only
 
         Script variables may be marked as read-only.  This will
@@ -569,9 +571,9 @@ class Interpreter(object):
         return out
 
     def on_expression(self, node):
-        "basic expression"
+        """basic expression."""
 
-        return self.on_module(node) # ():('body',)
+        return self.on_module(node)     # ():('body',)
 
     def on_pass(self, node):
         """Pass statement."""
@@ -772,7 +774,7 @@ class Interpreter(object):
         nslice = self.run(node.slice)
         ctx = node.ctx.__class__
         if ctx in (ast.Load, ast.Store):
-            if nslice != None:
+            if nslice is not None:
                 if isinstance(node.slice, (ast.Index, ast.Slice, ast.Ellipsis)):
                     return val.__getitem__(nslice)
                 elif isinstance(node.slice, ast.ExtSlice):
@@ -883,7 +885,7 @@ class Interpreter(object):
         sep = kws.pop('sep', ' ')
         end = kws.pop('end', '\n')
 
-        if prefix != None:
+        if prefix is not None:
             print(prefix, *out, file=fileh, sep=sep, end=end)
         else:
             print(*out, file=fileh, sep=sep, end=end)
@@ -951,8 +953,7 @@ class Interpreter(object):
         for tnode in node.generators:
             if tnode.__class__ == ast.comprehension:
                 if tnode.target.__class__ == ast.Name:
-                    if (not valid_symbol_name(tnode.target.id) or
-                        tnode.target.id in self.readonly_symbols):
+                    if (not valid_symbol_name(tnode.target.id) or tnode.target.id in self.readonly_symbols):
                         errmsg = "invalid symbol name (reserved word?) %s" % tnode.target.id
                         self.raise_exception(tnode.target, exc=NameError, msg=errmsg)
                     locals[tnode.target.id] = []
@@ -968,17 +969,15 @@ class Interpreter(object):
 
         for tnode in node.generators:
             if tnode.__class__ == ast.comprehension:
-#                tlist = []
                 ttype = 'name'
                 if tnode.target.__class__ == ast.Name:
-                    if (not valid_symbol_name(tnode.target.id) or
-                        tnode.target.id in self.readonly_symbols):
+                    if (not valid_symbol_name(tnode.target.id) or tnode.target.id in self.readonly_symbols):
                         errmsg = "invalid symbol name (reserved word?) %s" % tnode.target.id
                         self.raise_exception(tnode.target, exc=NameError, msg=errmsg)
                     ttype, target = 'name', tnode.target.id
                 elif tnode.target.__class__ == ast.Tuple:
                     ttype = 'tuple'
-                    target =tuple([tval.id for tval in tnode.target.elts])
+                    target = tuple([tval.id for tval in tnode.target.elts])
 
                 for val in self.run(tnode.iter):
                     if ttype == 'name':
@@ -1033,7 +1032,7 @@ class Interpreter(object):
             # uh oh, there was an exception
             if len(self.error) > 0:
                 e_type, e_value, e_tback = self.error[-1].exc_info
-                if e_type == None:
+                if e_type is None:
                     e_value = self.error_msg
 
                 for hnd in node.handlers:
@@ -1176,10 +1175,10 @@ class Interpreter(object):
 
         with symlock:
             self.symtable[node.name] = Procedure(node.name, self, doc=doc,
-                                             lineno=self.lineno,
-                                             body=node.body,
-                                             args=args, kwargs=kwargs,
-                                             vararg=vararg, varkws=varkws)
+                                                lineno=self.lineno,
+                                                body=node.body,
+                                                args=args, kwargs=kwargs,
+                                                vararg=vararg, varkws=varkws)
 
         if node.name in self.no_deepcopy:
             self.no_deepcopy.remove(node.name)
@@ -1339,7 +1338,6 @@ class Procedure(object):
         # add the function arguments to the global table
         try:
             with symlock:
-#                save_symtable = self.__asteval__.symtable.copy()
                 self.__asteval__.symtable.update(symlocals)
         except Exception as ex:
             if not self.no_print:
@@ -1395,25 +1393,25 @@ class Procedure(object):
         symlocals = None
         return retval
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 #
 # Support functions
 #
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 #
 # print the structure of an object
 #
 def dump(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
     if isinstance(obj, dict):
-        print (getattr(obj, 'items'))
+        print(getattr(obj, 'items'))
         for k in obj:
-            print ("  {} : {}  {}".format(k, obj[k], type(obj[k])))
+            print("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")
 
 #
@@ -1421,7 +1419,7 @@ def dump(obj, tag=None):
 #
 def dumpnode(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
@@ -1437,4 +1435,3 @@ def dumpnode(obj, tag=None):
             print('    ', n, n.__dict__)
     ast.dump(obj)
     print("=============================================")
-

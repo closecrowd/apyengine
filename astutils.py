@@ -47,7 +47,7 @@ UNSAFE_ATTRS = ('__subclasses__', '__bases__', '__globals__', '__code__',
                 '__getattribute__', '__subclasshook__', '__new__',
                 '__init__', 'func_globals', 'func_code', 'func_closure',
                 'im_class', 'im_func', 'im_self', 'gi_code', 'gi_frame',
-                '__asteval__', 'f_locals', '__mro__', '__builtins__','__doc__')
+                '__asteval__', 'f_locals', '__mro__', '__builtins__', '__doc__')
 
 # inherit these from python's __builtins__
 FROM_PY = ('ArithmeticError', 'AssertionError', 'AttributeError',
@@ -162,9 +162,9 @@ FROM_NUMPY = ('Inf', 'NAN', 'abs', 'add', 'alen', 'all', 'amax', 'amin',
 
 # Python time module
 # these symbols will have _ appended
-FROM_TIME = ('ctime','clock','altzone','asctime','strptime',
-              'gmtime','mktime','timezone','sleep','tzname','daylight',
-              'time','strftime','localtime', 'monotonic' )
+FROM_TIME = ('ctime', 'clock', 'altzone', 'asctime', 'strptime',
+              'gmtime', 'mktime', 'timezone', 'sleep', 'tzname', 'daylight',
+              'time', 'strftime', 'localtime', 'monotonic' )
 
 # Python base64 module
 # these symbols will have _ appended
@@ -174,7 +174,7 @@ FROM_BASE64 = ('b64encode', 'b64decode', 'urlsafe_b64encode', 'urlsafe_b64decode
 # these symbols will have _ appended
 FROM_JSON = ('dumps', 'loads', 'JSONDecoder', 'JSONEncoder')
 # rename theses a bit to dodge a conflict with numpy
-JSON_RENAMES = { 'dumps':'jsondumps', 'loads':'jsonloads' }
+JSON_RENAMES = { 'dumps': 'jsondumps', 'loads': 'jsonloads' }
 
 # Python re module
 FROM_RE = {'compile', 'search', 'match', 'fullmatch', 'split', 'findall',
@@ -184,9 +184,9 @@ FROM_RE = {'compile', 'search', 'match', 'fullmatch', 'split', 'findall',
 # python modules that may be installed by scripts with the install_() function
 # and their symbols (defined above)
 # The 'python' module is automatically installed
-MODULE_LIST = {'python':FROM_PY, 'math':FROM_MATH, 'time':FROM_TIME,
-                'numpy':FROM_NUMPY, 'base64':FROM_BASE64, 'json':FROM_JSON,
-                're':FROM_RE}
+MODULE_LIST = {'python': FROM_PY, 'math': FROM_MATH, 'time': FROM_TIME,
+                'numpy': FROM_NUMPY, 'base64': FROM_BASE64, 'json': FROM_JSON,
+                're': FROM_RE}
 
 ##############################################################################
 
@@ -209,7 +209,7 @@ def strcasecmp_(s1, s2):
     return (s1.casefold() == s2.casefold())
 
 # rename Python funcs
-LOCALFUNCS = {'type': type_, 'split':split_, 'strcasecmp':strcasecmp_}
+LOCALFUNCS = {'type': type_, 'split': split_, 'strcasecmp': strcasecmp_}
 
 # Safe versions of functions to prevent denial of service issues
 
@@ -491,7 +491,7 @@ def install_python_module(symtable, modname, modlist, rename=True):
         # if not python, go and import the module
         # ('python' is installed at init time)
         if modname != 'python':
-            mod =  importlib.import_module(modname)
+            mod = importlib.import_module(modname)
             modd = mod.__dict__
         else:
             # we don't have to import the builtins

@@ -19,7 +19,7 @@ this engine.
 <https://github.com/closecrowd/apyshell>
 
 Credits:
-    * version: 1.0
+    * version: 1.0.0
     * last update: 2023-Nov-17
     * License:  MIT
     * Author:  Mark Anacker <closecrowd@pm.me>
@@ -31,6 +31,8 @@ Note:
 """
 
 import sys
+import os
+import string
 from types import *
 from os.path import exists
 
@@ -46,6 +48,10 @@ from .astutils import valid_symbol_name
 #
 
 DEFAULT_EXT = '.apy'        # default extension for scripts
+
+# chars we allow in file names (or other user-supplied names)
+# a-zA-Z0-9_-
+VALIDCHARS = string.ascii_letters+string.digits+'_-'
 
 ##############################################################################
 
@@ -121,7 +127,7 @@ class ApyEngine():
             self.__windows = False
 
         # if no base path for the scripts was given, use the current directory
-        if basepath == None or len(basepath) == 0:
+        if basepath is None or len(basepath) == 0:
             if self.__windows:
                 self.__basepath = []
             else:
@@ -170,7 +176,9 @@ class ApyEngine():
 
             Args:
                 msg :   The message to output, and return
+
             Returns:
+
                 The passed-in error message
 
         """
@@ -189,7 +197,7 @@ class ApyEngine():
             return False
 
         if state not in { True,  False }:
-            return False;
+            return False
 
         return False
 
@@ -199,13 +207,64 @@ class ApyEngine():
             return False
 
         if state not in { True,  False }:
-            return False;
+            return False
 
         return False
 
+    # set a value in the system dict
+    def setSysVar_(self, name, val):
+        """Sets the value of a system var.
+
+        Sets a value in the engine-maintained table.  These values may
+        be read by scripts using the "getSysVar_()" function.  A list of
+        the var names is saved in a script-accessible names "_sysvars_".
+
+        This method is NOT exposed to the scripts.
+
+            Args:
+
+                name    :   The name to store the value under.
+
+                val     :   The value to store. If None, remove the name from
+                the table.
+
+            Returns:
+
+                True if success, False if there was an error.
+
+        """
+
+        if not name:
+            return False
+        try:
+            # don't allow replacing the keys list
+            if name == '_sysvars_':
+                return False
+
+            # if val == None, delete the entry
+            if val is None:
+                # if it's in the table
+                if name in self.__systemVars:
+                    del self.__systemVars[name]
+            else:
+                # otherwise, store a new one
+                self.__systemVars[name] = val
+            # save a list of the symbols in a script-accessible variable
+            self.__systemVars['_sysvars_'] = list(self.__systemVars.keys())
+            return True
+        except:
+            return False
+
     # stop the script ASAP
     def abortrun(self):
-        ''' Stop a script as soon as possible. '''
+        """Stop a script as soon as possible.
+
+        This function sets a flag that the Interpreter check as often
+        as possible.  If the flag is set, of the script is halted and
+        control returns to the host program.
+
+        """
+
         if self.__ast:
             self.__abort = True
             try:
@@ -215,13 +274,40 @@ class ApyEngine():
 
     # add a new command
     def regcmd(self, name, func=None):
-        """ Register a new command for the scripts to use. """
+        """Register a new command for the scripts to use.
+
+        This method adds a function name and a reference to it's
+        implementation to the script's symbol table.  This is how
+        Extensions add their functions when they are loaded (via
+        the extensionapi).  It's also how THIS module makes the
+        following methods available to the scripts (when applicable).
+
+        It can be called on it's own to add a single function name,
+        or by the addcmds() to add a bunch at once.  It can also be
+        called directly by the host application to give scripts access
+        to custom commands.
+
+            Args:
+
+                name    :   The function name to add
+
+                func    :   A reference to it's implementation
+
+            Returns:
+
+                True if the command was added, False if not
+
+        Note: see addcmds() below
+
+        """
+
         if not name or len(name) < 1:
             return False
+
         # if it's a valid name
         if valid_symbol_name(name):
             # and has a function body
-            if func != None:
+            if func is not None:
                 # add or replace in the table
                 self.__ast.addSymbol(name, func)
                 # and add the name to the RO table if it isn't already
@@ -232,9 +318,27 @@ class ApyEngine():
 
     # remove a registered command
     def unregcmd(self, name):
-        """ unregister a command. """
-        if not name:
+        """Unregister a command.
+
+        Removes a function name and reference from the symbol
+        table, making it inaccessible to scripts.  This is used
+        to UNload an extension.
+
+            Args:
+
+                name    :   The function name to remove
+
+            Returns:
+
+                True if the command was deleted, False if not
+
+        Note: see delcmds() below
+
+        """
+
+        if not name or len(name) < 1:
             return False
+
         # if it's a valid name
         if asteval.valid_symbol_name(name):
             self.__ast.delSymbol(name)
@@ -244,28 +348,68 @@ class ApyEngine():
         return False
 
     # add new built-in commands after init
-    def addcmds(self, cmddict, value=None):
-        """ register a whole dict of new commands for the scripts to use. """
-        if cmddict != None:
+    def addcmds(self, cmddict):
+        """Register a whole dict of new commands for the scripts to use.
+
+        This method adds multiple name:definition pairs into the symbol
+        table at once.  It's more convenient than calling regcmd() for
+        each one.
+
+        This method is called by the registerCmds() method in the
+        ExtensionAPI class.  This is how Extensions add their functions
+        when they load.
+
+            Args:
+
+                cmddict :   A dict with name:reference pairs
+
+            Returns:
+
+                True if the arguments were valid, False otherwise
+
+        """
+
+        if cmddict is not None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
                     self.regcmd(k, v)
-            if type(cmddict) is str:
-                if value != None:
-                     self.regcmd(cmddict,  value)
+                # note: we don't check the return of each item
+                return True
+        return False
 
-    def delcmds(self, cmddict, value=None):
-        """ unregister a whole dict of existing commands. """
-        if cmddict != None:
+    def delcmds(self, cmddict):
+        """Unregister a whole dict of existing commands.
+
+        This method deletes multiple name:definition pairs from the symbol
+        table at once.  It's more convenient than calling unregcmd() for
+        each one.
+
+        This method is called by the unregisterCmds() method in the
+        ExtensionAPI class.  This is how Extensions clean up when they
+        are unloaded.
+
+            Args:
+
+                cmddict :   A dict with name:reference pairs
+
+            Returns:
+
+                True if the arguments were valid, False otherwise
+
+        """
+
+        if cmddict is not None:
             if type(cmddict) is dict:
                 for k, v in cmddict.items():
+                    # note: we don't check the return of each item
                     self.unregcmd(k)
-            if type(cmddict) is str:
-                if value != None:
-                     self.unregcmd(cmddict)
+                return True
+        return False
 
 #
 # script proc persistence
+# these methods are useful to host frameworks that want to
+# manage script libraries.
 #
 
     # add or remove a proc in the persist list
@@ -277,16 +421,18 @@ class ApyEngine():
         it doesn't affect the presence of the proc in the engine itself.
 
             Args:
+
                 pname   :   The name of the def func() to presist (or not)
-                flag    :   if True, add it to the persis list
-                            if False, remove it
+                flag    :   if True, add it to the persist list. if False, remove it
+
             Returns:
+
                 The return value. True for success, False otherwise.
 
         """
 
         # setting persist state
-        if flag == True:
+        if flag is True:
             # already in there?
             if pname in self.__persistprocs:
                 return True
@@ -314,8 +460,11 @@ class ApyEngine():
         This effectively over-rides the setProcPersist() setting.
 
             Args:
+
                 pname   :   The name of the def func() to remove
+
             Returns:
+
                 The return value. True for success, False otherwise.
 
         """
@@ -343,8 +492,11 @@ class ApyEngine():
         useful when you're loading a new script programmatically.
 
             Args:
-                exception_list  :   A list of proc names to NOT remove.
+
+                exception_list  :   A list[] of proc names to NOT remove.
+
             Returns:
+
                 None
 
         """
@@ -365,7 +517,7 @@ class ApyEngine():
         # walk the list of procs
         for k in klist:
             # if we have an exception list
-            if exception_list != None:
+            if exception_list is not None:
                 # and this proc is on it
                 if k in exception_list:
                     # don't remove
@@ -393,8 +545,11 @@ class ApyEngine():
         the host application.
 
             Args:
+
                 cmd :   An expression to execute
+
             Returns:
+
                 The results of the expression or None if there was an error
 
         """
@@ -422,8 +577,11 @@ class ApyEngine():
         the host application.
 
             Args:
+
                 code    :   An expression to check
+
             Returns:
+
                 'OK' if the expression is valid
                 'ERR' and a message if it isn't valid
                 None if code is empty
@@ -438,23 +596,6 @@ class ApyEngine():
         except Exception as e:
             return self.reporterr_("ERR in code: "+str(e))
 
-    # set a value in the system dict
-    def setSysVar_(self, name, val):
-        '''
-        '''
-        if not name:
-            return False
-        try:
-            # don't allow replacing the entire table
-            if name == '_sysvars_':
-                return False
-            self.__systemVars[name] = val
-            # save a list of the symbols in a script-accessible variable
-            self.__systemVars['_sysvars_'] = list(self.__systemVars.keys())
-            return True
-        except:
-            return False
-
     # install a pre-authorized Python module into the engine's symbol table
     def install_(self, modname):
         """Install a pre-authorized Python module into the engine's symbol table.
@@ -464,8 +605,11 @@ class ApyEngine():
         they can not be uninstalled during this run of apyshell.
 
             Args:
+
                 modname :   The module name to install
+
             Returns:
+
                 The return value. True for success, False otherwise.
 
         """
@@ -485,20 +629,61 @@ class ApyEngine():
 
     # return the list of installed modules
     def list_Modules_(self):
+        """Returns a list[] of installed modules.
+
+        Returns a list of the built-in modules installed with the
+        "install_()" command.
+
+            Args:
+
+                None
+
+            Returns:
+
+                A list of installed modules (not Extensions).
+
+        """
         return self.__installs
 
     # load and execute a script file
     def loadScript_(self, filename, persist=False):
-        """ load and execute a script file """
+        """Load and execute a script file.
+
+        This method loads a script file (the .apy extension will be
+        added if needed), then executes it.  This is called by the host
+        application to run a script.  It can also be called within a
+        script with the "loadScript_()" command to do things like loading
+        library functions or variables.
+
+        Files are loaded relative to the basepath passed to the engine at
+        init time.
+
+        The persist flag is used by frameworks that want to retain some script-
+        defined funcs (such as libraries), while removing others.  See the
+        clearProcs() method.
+
+            Args:
+
+                filename    :   The name of the script file (.apy)
+
+                persist     :   If True, mark any functions defined as persistent.
+
+            Returns:
+
+                None if the script executed, an error message if not.
+
+        """
 
         if not filename:
             return self.reporterr_("Error loading script - Missing filename")
 
+        # clean up the submitted filename
+        sfilename = sanitizePath(filename)
+
         # verify the file name
         # no quoting (*nix systems only)
-        # clean up the submitted fiename
-        sfilename = sanitizePath(filename)
-        if len(sfilename) < 1:
+
+        if not checkFileName(sfilename):
             return self.reporterr_("Error loading script '"+filename+"': Invalid filename")
         filename = sfilename
 
@@ -517,11 +702,12 @@ class ApyEngine():
                 fn += DEFAULT_EXT
 
             # load the script
-            infile = open(fn ,'r')
+            infile = open(fn, 'r')
             # read a line - TODO: add a check for early exit here (maybe)
             scode = infile.read()
             infile.close()
 
+            # parse the script into an AST tree
             ccode = self.__ast.parse(scode)
 
             # save the current script name
@@ -530,6 +716,8 @@ class ApyEngine():
 
             # and run the code
             self.__ast.run(ccode)
+
+            # if we're retaining the def funcs() from this script
             if persist:
                 newprocs = self.getProcs_()
                 if len(newprocs) > 0:
@@ -539,8 +727,8 @@ class ApyEngine():
         except Exception as e:
             es = ""
             for e in self.__ast.error:
-                t =  e.get_error()
-                if t != None:
+                t = e.get_error()
+                if t is not None:
                     es = str(t[0]) + ": " + str(e.msg)
                 else:
                     es = e.msg
@@ -552,7 +740,20 @@ class ApyEngine():
 
     # is a script symbol defined?
     def isDef_(self, name):
-        """ return True if the symbol is defined """
+        """Return True if the symbol is defined.
+
+        Checks the symbol table for a name (either a variable or
+        functions) that has been defined by a script.
+
+            Args:
+
+                name    :   The symbol name to check
+
+            Returns:
+
+                True if the name (func or variable) has been defined in a script.
+
+        """
 
         if not name:
             return False
@@ -569,8 +770,21 @@ class ApyEngine():
         return False
 
     # returns a list of currently-defined def functions
-    def listDefs_(self, exception_list=None):
-        """ returns a list of currently-defined def functions """
+    def listDefs_(self):
+        """Returns a list of currently-defined def functions.
+
+        List script-defined functions.  The returned list may be empty
+        if no functions have been defined.
+
+            Args:
+
+                None
+
+            Returns:
+
+                A list[] of the function names (if any).
+
+        """
 
         klist = []
         for k in self.__ast.symtable:
@@ -580,6 +794,27 @@ class ApyEngine():
 
     # return a system var to the script (read-only to scripts)
     def getSysVar_(self, name, default=None):
+        """Returns the value of a system var to the script.
+
+        The engine maintains a table of values that the host application
+        can read and write, but the scripts can only read.  This provides
+        a useful means of passing system-level info down into the scripts.
+
+        Scripts call this as "getSysVar_()".  The host could call it also,
+        if need be.  The vars are set by the host with "setSysVar_()", which
+        is NOT exposed to the scripts.
+
+            Args:
+
+                name    :   The name to retrieve.
+
+                default :   A value to return if the name isn't found.
+
+            Returns:
+
+                The value stored under "name", or the default value.
+
+        """
         if not name:
             return default
         try:
@@ -592,10 +827,31 @@ class ApyEngine():
 
     # returns the value of a script variable to the host program
     def getvar_(self, vname, default=None):
-        """ returns the value of a script variable to the host program """
+        """Returns the value of a script variable to the host program.
 
-        if not vname:
-            return default
+        This method allows the host application to get the value of a
+        variable defined in a script.
+
+        Scripts can call this as the "getvar_()" function.  This might
+        seem redundant, since a script can just get the value of a
+        variable directly.  But this function allows for *indirect*
+        referencing, which can be very powerful.  And a nightmare to
+        troubleshoot, if not used properly.
+
+            Args:
+
+                vname   :   The name of the script-defined variable.
+
+                default :   Default to return if it's not defined.
+
+            Returns:
+
+                The value of the variable, or the default argument.
+
+        """
+
+        if not vname or len(vname) < 1:
+            return False
 
         ret = self.__ast.getSymbol(vname)
         if not ret:
@@ -606,23 +862,48 @@ class ApyEngine():
     # set a script variable from the outside
     # pass None as val to delete
     def setvar_(self, vname, val):
-        """Set a variable from the outside.
+        """Set a variable from the host application.
 
-            pass None as val to delete the variable
+        This method creates or modifies the value of a variable in
+        the script symbol table.  Scripts can then simply reference the
+        variable like any other.
+
+        Passing None as the val parameter will remove the variable from
+        the symbol table. This might upset some script that depends on that
+        variable being defined - use with caution.
+
+        Only user-created vars may be set - that is, those whose names do
+        NOT end with "_".  You can use getvar_() to read system-created vars,
+        but not set them with setvar_().
+
+        This can also be called by scripts with the "setvar_()" function.
+        Again, it allows for indirect variable referencing, which is
+        otherwise difficult to do in Python.
+
+            Args:
+
+                vname   :   The name of the script-defined variable.
+
+                val     :   The value to set it to (None to delete it)
+
+            Returns:
+
+                True if success, False otherwise.
 
         """
 
         if not vname or len(vname) < 1:
             return False
+
         # if it's a valid name
-        if asteval.valid_symbol_name(vname):
+        if valid_symbol_name(vname) and not vname.endswith('_'):
             # don't change read-only vars
             if self.__ast.isReadOnly(vname):
                 return False
             # if we pass something
-            if val != None:
+            if val is not None:
                 # add it to the table
-                self.__ast.addSymbol(vname,  val)
+                self.__ast.addSymbol(vname, val)
                 return True
             else:
                 # otherwise, del any existing copy
@@ -632,6 +913,17 @@ class ApyEngine():
 
     # stop running the current script and exit gracefully.
     def stop_(self, ret=0):
+        """Stop the running script and exit gracefully.
+
+        A script can call "stop_()" to stop execution at the next
+        opportunity, and gracefully exit.  A return value may be
+        passed back.
+
+            Args:
+
+                ret :   An int returned to the host application.
+
+        """
 
         # and save the return code where we can get it later
         self.setSysVar_('exitcode_', ret)
@@ -641,17 +933,53 @@ class ApyEngine():
 
     # exit the engine *and* it's host application abruptly
     def exit_(self, ret=0):
+        """Shut it all down right now.
+
+        This method will cause the engine to exit immediately, without
+        a clean shutdown.  The script can call "exit_()" to bail out
+        right now.
+
+            Args:
+
+                ret :   An int returned as the exit code from the application.
+
+        """
+
         sys.exit(int(ret))
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 #
 # Support functions
 #
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+
+#
+# return True if the string contains only a-zA-Z0-9-_
+# Used as a valid string check on script-supplied file names
+# copied from apyshell.support
+def checkFileName(fname):
+    """Check a file name
+
+    Checks the given filename for characters in the set
+    of a-z, A-Z, _ or -
+
+        Args:
+            fname   :   The name to check
+        Returns:
+            True if the name is entirely in that set
+            False if there were invalid char(s)
+
+    """
+
+    if not fname or len(fname) < 1 or len(fname) > 256:
+        return False
+
+    return all(char in VALIDCHARS for char in fname)
 
 # scan a list of dirs looking for a file
 # used by loadScript_()
 def findFile(paths, filename):
+
     if not paths or not filename:
         return None
     if len(paths) == 0 or len(filename) == 0:
@@ -665,25 +993,58 @@ def findFile(paths, filename):
     return None
 
 # sanitize a file path
+# copied from apyshell.support
 def sanitizePath(path):
-    if not path:
-        return ''
+    """Clean a path.
 
-    while '\\' in path and path:
+    Remove dangerous characters from a path string.
+
+        Args:
+
+            path    :   The string with the path to clean
+
+        Returns:
+
+            The cleaned path or None if there was a problem
+
+    """
+
+    if not path or len(path) < 1 or len(path) > 4096:
+        return None
+
+    #
+    # Linux path sanitation
+    #
+
+    # strip out \\
+    while path and '\\' in path:
         path = path.replace('\\',  '')
-    while '..' in path and path:
-        path = path.replace('..', '')
-    while '//' in path and path:
-        path = path.replace('//', '/')
-    # leading dirs are not allowed
-    while path and path[0] == '/':
+    # strip out ..
+    while path and '..' in path:
+        path = path.replace('..',  '')
+    # strip out |
+    while path and '|' in path:
+        path = path.replace('|',  '')
+    while path and ':' in path:
+        path = path.replace(':',  '')
+    while path[0] == '/':
         path = path[1:]
+
+    np = os.path.normpath(path)
+    (p, f) = os.path.split(np)
+
+    path = os.path.join(p, f)
+
+    #
+    # Windows - TODO:
+    #
 
     return path
 
+
 def dump(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
@@ -693,4 +1054,3 @@ def dump(obj, tag=None):
             if type(obj[k]) == asteval.asteval.Procedure:
                 print("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")
-

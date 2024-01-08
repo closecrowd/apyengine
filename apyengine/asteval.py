@@ -44,8 +44,8 @@ functions that are considered unsafe are missing ('exec', and
 'getattr' for example)
 
 Credits:
-   * version: 1.0
-   * last update: 2018-Sept-29
+   * version: 1.0.0
+   * last update: 2023-Dec-31
    * License:  MIT
    * Author:  Mark Anacker <closecrowd@pm.me>
    * Copyright (c) 2023 by Mark Anacker
@@ -146,7 +146,7 @@ class Interpreter(object):
 
         self.modlist = []       # list of installed modules
 
-        ## symtable
+        # symtable
         if symtable is None:
             if usersyms is None:
                 usersyms = {}
@@ -199,6 +199,7 @@ class Interpreter(object):
 
     # stop a running script as soon as possible
     def abortrun(self):
+
         """Terminate execution of a script.
 
         Sets a flag that causes the currently-running script to exit
@@ -295,6 +296,7 @@ class Interpreter(object):
         return unique_symbols
 
     def isReadOnly(self, varname):
+
         """See if a script variable name is marked read-only
 
         Script variables may be marked as read-only.  This will
@@ -314,6 +316,10 @@ class Interpreter(object):
 
     # thread-safe add a symbol
     def addSymbol(self, name, val):
+        """Add a symbol to the script symbol table.
+
+        """
+
         global symlock
 
         with symlock:
@@ -322,6 +328,10 @@ class Interpreter(object):
 
     # thread-safe delete a symbol
     def delSymbol(self, name):
+        """Remove a symbol from the script symbol table.
+
+        """
+
         global symlock
 
         with symlock:
@@ -350,8 +360,13 @@ class Interpreter(object):
                              msg="'%s' is not supported" %
                              (node.__class__.__name__))
 
-    def raise_exception(self, node, exc=None, msg='', expr=None,
-                        lineno=0):
+    def raise_exception(self, node, exc=None, msg='', expr=None, lineno=0):
+        """Raise an exception with details.
+
+        Add details to an exception, then raise it up to the engine.
+
+        """
+
         global symlock
 
         ml = len(msg)
@@ -514,7 +529,7 @@ class Interpreter(object):
 
     @staticmethod
     def dump(node, **kw):
-        """Simple ast dumper."""
+        """Simple ast node dumper."""
 
         return ast.dump(node, **kw)
 
@@ -529,10 +544,12 @@ class Interpreter(object):
 
     def on_index(self, node):
         """Index."""
+
         return self.run(node.value)  # ('value',)
 
     def on_return(self, node):  # ('value',)
         """Return statement: look for None, return special sentinal."""
+
         if self._calldepth == 0:
             raise SyntaxError('cannot return at top level')
         self.retval = self.run(node.value)
@@ -542,79 +559,96 @@ class Interpreter(object):
 
     def on_repr(self, node):
         """Repr."""
+
         return repr(self.run(node.value))  # ('value',)
 
     def on_module(self, node):    # ():('body',)
         """Module def."""
+
         out = None
         for tnode in node.body:
             out = self.run(tnode)
         return out
 
     def on_expression(self, node):
-        "basic expression"
-        return self.on_module(node) # ():('body',)
+        """basic expression."""
+
+        return self.on_module(node)     # ():('body',)
 
     def on_pass(self, node):
         """Pass statement."""
+
         return None  # ()
 
     def on_ellipsis(self, node):
         """Ellipses."""
+
         return Ellipsis
 
     # for break and continue: set the instance variable _interrupt
     def on_interrupt(self, node):    # ()
         """Interrupt handler."""
+
         self._interrupt = node
         return node
 
     def on_break(self, node):
         """Break."""
+
         return self.on_interrupt(node)
 
     def on_continue(self, node):
         """Continue."""
+
         return self.on_interrupt(node)
 
     def on_assert(self, node):    # ('test', 'msg')
         """Assert statement."""
+
         if not self.run(node.test):
             self.raise_exception(node, exc=AssertionError, msg=node.msg)
         return True
 
     def on_list(self, node):    # ('elt', 'ctx')
         """List."""
+
         return [self.run(e) for e in node.elts]
 
     def on_tuple(self, node):    # ('elts', 'ctx')
         """Tuple."""
+
         return tuple(self.on_list(node))
 
     def on_dict(self, node):    # ('keys', 'values')
         """Dictionary."""
+
         return dict([(self.run(k), self.run(v)) for k, v in
                      zip(node.keys, node.values)])
 
     def on_constant(self, node):   # ('value', 'kind')
         """Return constant value."""
+
         return node.value
 
     def on_num(self, node):   # ('n',)
         """Return number."""
+
         return node.n
 
     def on_str(self, node):   # ('s',)
         """Return string."""
+
         return node.s
 
     def on_nameconstant(self, node):   # ('value',)
         """ named constant
             True, False, None in python >= 3.4 """
+
         return node.value
 
     def on_name(self, node):    # ('id', 'ctx')
         """Name node."""
+
         global symlock
         ctx = node.ctx.__class__
         if ctx in (ast.Param, ast.Del):
@@ -635,6 +669,7 @@ class Interpreter(object):
         etc.
 
         """
+
         global symlock
 
         # assignment in an except: statement comes here
@@ -647,6 +682,11 @@ class Interpreter(object):
             if not valid_symbol_name(node.id) or node.id in self.readonly_symbols:
                 errmsg = "invalid symbol name (reserved word?) %s" % node.id
                 self.raise_exception(node, exc=NameError, msg=errmsg)
+
+            if node.id.endswith('_'):
+                errmsg = "invalid var name ('_' ending is reserved): '%s'" % node.id
+                self.raise_exception(node, exc=NameError, msg=errmsg)
+
             with symlock:
                 self.symtable[node.id] = val
                 if node.id in self.no_deepcopy:
@@ -672,6 +712,7 @@ class Interpreter(object):
 
     def on_attribute(self, node):    # ('value', 'attr', 'ctx')
         """Extract attribute."""
+
         ctx = node.ctx.__class__
         if ctx == ast.Store:
             msg = "attribute for storage: shouldn't be here!"
@@ -708,6 +749,7 @@ class Interpreter(object):
 
     def on_augassign(self, node):    # ('target', 'op', 'value')
         """Augmented assign."""
+
         return self.on_assign(ast.Assign(targets=[node.target],
                                          value=ast.BinOp(left=node.target,
                                                          op=node.op,
@@ -715,21 +757,24 @@ class Interpreter(object):
 
     def on_slice(self, node):    # ():('lower', 'upper', 'step')
         """Simple slice."""
+
         return slice(self.run(node.lower),
                      self.run(node.upper),
                      self.run(node.step))
 
     def on_extslice(self, node):    # ():('dims',)
         """Extended slice."""
+
         return tuple([self.run(tnode) for tnode in node.dims])
 
     def on_subscript(self, node):    # ('value', 'slice', 'ctx')
         """Subscript handling -- one of the tricky parts."""
+
         val = self.run(node.value)
         nslice = self.run(node.slice)
         ctx = node.ctx.__class__
         if ctx in (ast.Load, ast.Store):
-            if nslice != None:
+            if nslice is not None:
                 if isinstance(node.slice, (ast.Index, ast.Slice, ast.Ellipsis)):
                     return val.__getitem__(nslice)
                 elif isinstance(node.slice, ast.ExtSlice):
@@ -742,6 +787,7 @@ class Interpreter(object):
 
     def on_delete(self, node):    # ('targets',)
         """Delete statement."""
+
         global symlock
 
         for tnode in node.targets:
@@ -769,15 +815,18 @@ class Interpreter(object):
 
     def on_unaryop(self, node):    # ('op', 'operand')
         """Unary operator."""
+
         return op2func(node.op)(self.run(node.operand))
 
     def on_binop(self, node):    # ('left', 'op', 'right')
         """Binary operator."""
+
         return op2func(node.op)(self.run(node.left),
                                 self.run(node.right))
 
     def on_boolop(self, node):    # ('op', 'values')
         """Boolean operator."""
+
         val = self.run(node.values[0])
         is_and = ast.And == node.op.__class__
         if (is_and and val) or (not is_and and not val):
@@ -789,6 +838,7 @@ class Interpreter(object):
 
     def on_compare(self, node):  # ('left', 'ops', 'comparators')
         """comparison operators"""
+
         lval = self.run(node.left)
         out = True
         results = []
@@ -835,7 +885,7 @@ class Interpreter(object):
         sep = kws.pop('sep', ' ')
         end = kws.pop('end', '\n')
 
-        if prefix != None:
+        if prefix is not None:
             print(prefix, *out, file=fileh, sep=sep, end=end)
         else:
             print(*out, file=fileh, sep=sep, end=end)
@@ -844,6 +894,7 @@ class Interpreter(object):
 
     def on_if(self, node):    # ('test', 'body', 'orelse')
         """Regular if-then-else statement."""
+
         block = node.body
         if not self.run(node.test):
             block = node.orelse
@@ -852,6 +903,7 @@ class Interpreter(object):
 
     def on_ifexp(self, node):    # ('test', 'body', 'orelse')
         """If expressions."""
+
         expr = node.orelse
         if self.run(node.test):
             expr = node.body
@@ -893,6 +945,7 @@ class Interpreter(object):
 
     def on_listcomp(self, node):    # ('elt', 'generators')
         """List comprehension -- only up to 4 generators!"""
+
         out = []
         locals = {}
         saved_syms = {}
@@ -900,8 +953,7 @@ class Interpreter(object):
         for tnode in node.generators:
             if tnode.__class__ == ast.comprehension:
                 if tnode.target.__class__ == ast.Name:
-                    if (not valid_symbol_name(tnode.target.id) or
-                        tnode.target.id in self.readonly_symbols):
+                    if (not valid_symbol_name(tnode.target.id) or tnode.target.id in self.readonly_symbols):
                         errmsg = "invalid symbol name (reserved word?) %s" % tnode.target.id
                         self.raise_exception(tnode.target, exc=NameError, msg=errmsg)
                     locals[tnode.target.id] = []
@@ -917,17 +969,15 @@ class Interpreter(object):
 
         for tnode in node.generators:
             if tnode.__class__ == ast.comprehension:
-#                tlist = []
                 ttype = 'name'
                 if tnode.target.__class__ == ast.Name:
-                    if (not valid_symbol_name(tnode.target.id) or
-                        tnode.target.id in self.readonly_symbols):
+                    if (not valid_symbol_name(tnode.target.id) or tnode.target.id in self.readonly_symbols):
                         errmsg = "invalid symbol name (reserved word?) %s" % tnode.target.id
                         self.raise_exception(tnode.target, exc=NameError, msg=errmsg)
                     ttype, target = 'name', tnode.target.id
                 elif tnode.target.__class__ == ast.Tuple:
                     ttype = 'tuple'
-                    target =tuple([tval.id for tval in tnode.target.elts])
+                    target = tuple([tval.id for tval in tnode.target.elts])
 
                 for val in self.run(tnode.iter):
                     if ttype == 'name':
@@ -967,6 +1017,7 @@ class Interpreter(object):
 
     def on_excepthandler(self, node):  # ('type', 'name', 'body')
         """Exception handler..."""
+
         return (self.run(node.type), node.name, node.body)
 
     # if at first you don't succeed... that's what we have except: blocks for...
@@ -981,7 +1032,7 @@ class Interpreter(object):
             # uh oh, there was an exception
             if len(self.error) > 0:
                 e_type, e_value, e_tback = self.error[-1].exc_info
-                if e_type == None:
+                if e_type is None:
                     e_value = self.error_msg
 
                 for hnd in node.handlers:
@@ -1079,10 +1130,12 @@ class Interpreter(object):
 
     def on_arg(self, node):    # ('test', 'msg')
         """Arg for function definitions."""
+
         return node.arg
 
     def on_functiondef(self, node):
         """Define procedures."""
+
         global symlock
         # ('name', 'args', 'body', 'decorator_list')
         if node.decorator_list:
@@ -1122,10 +1175,10 @@ class Interpreter(object):
 
         with symlock:
             self.symtable[node.name] = Procedure(node.name, self, doc=doc,
-                                             lineno=self.lineno,
-                                             body=node.body,
-                                             args=args, kwargs=kwargs,
-                                             vararg=vararg, varkws=varkws)
+                                                lineno=self.lineno,
+                                                body=node.body,
+                                                args=args, kwargs=kwargs,
+                                                vararg=vararg, varkws=varkws)
 
         if node.name in self.no_deepcopy:
             self.no_deepcopy.remove(node.name)
@@ -1285,7 +1338,6 @@ class Procedure(object):
         # add the function arguments to the global table
         try:
             with symlock:
-#                save_symtable = self.__asteval__.symtable.copy()
                 self.__asteval__.symtable.update(symlocals)
         except Exception as ex:
             if not self.no_print:
@@ -1341,25 +1393,25 @@ class Procedure(object):
         symlocals = None
         return retval
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 #
 # Support functions
 #
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 #
 # print the structure of an object
 #
 def dump(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
     if isinstance(obj, dict):
-        print (getattr(obj, 'items'))
+        print(getattr(obj, 'items'))
         for k in obj:
-            print ("  {} : {}  {}".format(k, obj[k], type(obj[k])))
+            print("  {} : {}  {}".format(k, obj[k], type(obj[k])))
     print("=============================================")
 
 #
@@ -1367,7 +1419,7 @@ def dump(obj, tag=None):
 #
 def dumpnode(obj, tag=None):
     print("============================================")
-    if tag != None:
+    if tag is not None:
         print("", tag)
     else:
         print("")
@@ -1383,4 +1435,3 @@ def dumpnode(obj, tag=None):
             print('    ', n, n.__dict__)
     ast.dump(obj)
     print("=============================================")
-
